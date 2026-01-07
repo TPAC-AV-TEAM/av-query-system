@@ -2,127 +2,75 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定 (這是 Android 安裝時抓取名稱的最高優先級)
-st.set_page_config(
-    page_title="AV系統-A館", 
-    page_icon="🕶️",
-    layout="centered"
-)
+# 1. 網頁基本設定
+APP_NAME = "AV系統-總館" 
+st.set_page_config(page_title=APP_NAME, page_icon="🕶️", layout="centered")
 
-# 解決 Android 安裝名稱問題 (維持你測試成功的結構)
-st.components.v1.html(
-    f"""
-    <script>
-        window.parent.document.title = "AV系統-A館";
-    </script>
-    """,
-    height=0,
-)
+# 強制修改標題 (解決 Android 安裝名稱問題)
+st.components.v1.html(f"<script>window.parent.document.title = '{APP_NAME}';</script>", height=0)
 
-# 2. 進階 macOS 26 視覺規範
-macos_26_style = """
+# 2. 定義廳院代碼與配色馬甲
+# 對應：大劇院=GT, 多形式中劇院=BB, 鏡框式中劇院=GP
+HALL_MAPS = {
+    "大劇院": {"code": "GT", "color": "#0A84FF"},           # 藍色
+    "多形式中劇院": {"code": "BB", "color": "#FF375F"},     # 粉紅
+    "鏡框式中劇院": {"code": "GP", "color": "#FFD60A"},     # 金色
+    "DEFAULT": {"code": "AV", "color": "#FFFFFF"}
+}
+
+# 3. macOS 26 視覺規範
+macos_style = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    .stApp {
-        background-color: #000000;
-        color: #F5F5F7;
-        font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
-    }
-
-    /* 關鍵修正：調整搜尋容器間距，確保不擋住標題 */
-    .search-container {
-        margin-top: 10px !important;
-        margin-bottom: 20px !important;
-    }
-
-    [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        gap: 10px !important;
-    }
-    [data-testid="column"] {
-        width: auto !important;
-        flex: 1 1 auto !important;
-    }
-    [data-testid="column"]:nth-child(2) {
-        flex: 0 0 45px !important;
-    }
-
-    .block-container {
-        padding-top: 2.5rem !important;
-        max-width: 600px;
-    }
-
+    .stApp { background-color: #000000; color: #F5F5F7; font-family: "SF Pro Display", sans-serif; }
+    .search-container { margin-top: 10px !important; margin-bottom: 20px !important; }
+    [data-testid="stHorizontalBlock"] { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; gap: 10px !important; }
     header, footer, [data-testid="stHeader"] { display: none !important; }
-
-    .main-title {
-        font-weight: 700;
-        background: linear-gradient(180deg, #FFFFFF 0%, #8E8E93 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 32px;
-        text-align: center;
-        margin-bottom: 15px; /* 給予標題與下方組件足夠空間 */
-    }
-
-    .macos-card {
-        background: rgba(30, 30, 32, 0.6);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 0.5px solid rgba(255, 255, 255, 0.12);
-        border-radius: 20px;
-        padding: 20px;
-        margin-bottom: 12px;
-    }
-
-    .stTextInput > div > div > input {
-        border-radius: 12px !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        color: #FFFFFF !important;
-    }
-
-    .stButton > button {
-        border-radius: 12px !important;
-        width: 42px !important;
-        height: 42px !important;
-        background-color: rgba(255, 255, 255, 0.08) !important;
-        border: 0.5px solid rgba(255, 255, 255, 0.1) !important;
-        color: #FFFFFF !important;
-    }
-
+    .main-title { font-weight: 700; background: linear-gradient(180deg, #FFFFFF 0%, #8E8E93 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; text-align: center; margin-bottom: 15px; }
+    .macos-card { background: rgba(30, 30, 32, 0.6); backdrop-filter: blur(20px); border: 0.5px solid rgba(255, 255, 255, 0.12); border-radius: 20px; padding: 20px; margin-bottom: 12px; }
+    .stTextInput > div > div > input { border-radius: 12px !important; background-color: rgba(255, 255, 255, 0.05) !important; color: #FFFFFF !important; }
+    .stButton > button { border-radius: 12px !important; background-color: rgba(255, 255, 255, 0.08) !important; color: #FFFFFF !important; }
     [data-testid="stMetricValue"] { font-size: 22px !important; }
     .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
+    
+    /* 馬甲標籤樣式 */
+    .hall-badge {
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-left: 10px;
+        border: 1px solid;
+    }
 </style>
 """
-st.markdown(macos_26_style, unsafe_allow_html=True)
+st.markdown(macos_style, unsafe_allow_html=True)
 
-# 3. 初始化功能
-if 'search_query' not in st.session_state:
-    st.session_state.search_query = ""
-
+# 4. 初始化與資料讀取
+if 'search_query' not in st.session_state: st.session_state.search_query = ""
 def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
-        xlsx_files = [f for f in os.listdir(".") if f.endswith('.xlsx') and not f.startswith('~$')]
+        # 自動搜尋目錄下的 Excel 或 CSV
+        xlsx_files = [f for f in os.listdir(".") if f.endswith('.xlsx') or f.endswith('.csv') and not f.startswith('~$')]
         target_file = next((f for f in xlsx_files if any(k in f for k in ["Cable", "音視訊", "迴路盒"])), None)
         if not target_file: return None, "NO_FILE"
-        df = pd.read_excel(target_file, engine='openpyxl')
+        
+        if target_file.endswith('.csv'):
+            df = pd.read_csv(target_file)
+        else:
+            df = pd.read_excel(target_file)
+            
         df.columns = [c.strip() for c in df.columns]
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
             df['search_id'] = df['search_id'].apply(lambda x: x if x.startswith("AV") else "AV"+x)
-        return df, target_file
-    except Exception as e:
-        return None, str(e)
+        return df, "SUCCESS"
+    except Exception as e: return None, str(e)
 
 df, status = load_data()
 
@@ -134,11 +82,7 @@ if df is not None:
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
-        user_input = st.text_input(
-            "SEARCH", key="search_input_widget",
-            placeholder="輸入編號 (例如: 07-02)",
-            label_visibility="collapsed"
-        ).strip()
+        user_input = st.text_input("SEARCH", key="search_input_widget", placeholder="輸入編號 (例如: 07-02)", label_visibility="collapsed").strip()
         st.session_state.search_query = user_input
     with c2:
         st.button("✕", on_click=clear_search)
@@ -152,20 +96,34 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            st.markdown('<div class="macos-card" style="margin-top:-10px;">', unsafe_allow_html=True)
-            st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
-            st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
-            st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
+            # 取得原始廳名並清理空白
+            raw_hall = str(info.get('廳別', 'N/A')).strip()
+            # 獲取馬甲資訊
+            badge = HALL_MAPS.get(raw_hall, HALL_MAPS["DEFAULT"])
+
+            # 結果卡片：基本資訊
+            st.markdown(f'''
+                <div class="macos-card" style="border-left: 5px solid {badge['color']};">
+                    <p style='color:{badge['color']}; font-size:11px; font-weight:700; margin-bottom:4px;'>
+                        SYSTEM SCAN OK <span class="hall-badge" style="color:{badge['color']}; border-color:{badge['color']};">{badge['code']}</span>
+                    </p>
+                    <h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>
+                    <hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>
+                </div>
+            ''', unsafe_allow_html=True)
             
-            # 詳細位置垂直排列
-            st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
+            # 詳細內容
+            st.markdown('<div class="macos-card" style="margin-top:-20px;">', unsafe_allow_html=True)
+            st.metric("廳別", raw_hall)
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
-            st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
+            # 處理詳細位置中的換行符號
+            loc_detail = str(info.get('迴路盒位置', 'N/A')).replace('\\n', ' ').replace('\n', ' ')
+            st.metric("詳細位置", loc_detail)
             st.markdown('</div>', unsafe_allow_html=True)
 
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
-                st.markdown("<p style='color:#8E8E93; font-size:14px; margin-bottom:10px;'>📦 接口清單</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:{badge['color']}; font-size:14px; margin-bottom:10px;'>📦 {badge['code']} 接口清單</p>", unsafe_allow_html=True)
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 st.dataframe(summary, hide_index=True, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
