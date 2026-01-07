@@ -2,27 +2,11 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定
+# 1. 網頁基本設定 (最優先執行，確保 Chrome 偵測到)
 st.set_page_config(
-    page_title="AV系統-A館", # <--- 修改這裡
+    page_title="AV系統-A館",  # 這是 Chrome 抓取名稱的第一順位
     page_icon="🕶️",
     layout="centered"
-)
-
-# 使用更安全的方式注入標題，避免干擾 PWA 判定
-st.markdown(
-    f"""
-    <script>
-        var updateTitle = function() {{
-            var title = "AV系統-A館";
-            window.parent.document.title = title;
-            var meta = window.parent.document.querySelector('meta[name="application-name"]');
-            if (meta) meta.content = title;
-        }};
-        updateTitle();
-    </script>
-    """,
-    unsafe_allow_html=True,
 )
 
 # 2. 進階 macOS 26 視覺規範
@@ -36,10 +20,10 @@ macos_26_style = """
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
     }
 
-    /* 調整間距，讓標題與搜尋框保持適當距離但不擋住 */
+    /* 調整標題與搜尋框間距，確保不重疊 */
     .search-container {
-        margin-top: 10px !important;
-        margin-bottom: 15px !important;
+        margin-top: 15px !important;
+        margin-bottom: 20px !important;
     }
 
     [data-testid="stHorizontalBlock"] {
@@ -51,7 +35,7 @@ macos_26_style = """
     }
 
     .block-container {
-        padding-top: 2rem !important;
+        padding-top: 2.5rem !important;
         max-width: 600px;
     }
 
@@ -64,7 +48,7 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
     }
 
     .macos-card {
@@ -91,12 +75,12 @@ macos_26_style = """
     }
 
     [data-testid="stMetricValue"] { font-size: 22px !important; }
-    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 10px; }
+    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
 </style>
 """
 st.markdown(macos_26_style, unsafe_allow_html=True)
 
-# 3. 初始化
+# 3. 初始化狀態
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
@@ -104,7 +88,7 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取
+# 4. 資料讀取 (快取處理)
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
@@ -126,6 +110,7 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
+    # 搜尋卡片
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
@@ -139,6 +124,7 @@ if df is not None:
         st.button("✕", on_click=clear_search)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # 結果顯示
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
