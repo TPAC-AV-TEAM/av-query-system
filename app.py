@@ -6,14 +6,14 @@ import os
 APP_NAME = "AV系統-總館" 
 st.set_page_config(page_title=APP_NAME, page_icon="🕶️", layout="centered")
 
-# 解決 Android 安裝名稱問題的標題注入
+# 標題注入
 st.components.v1.html(f"<script>window.parent.document.title = '{APP_NAME}';</script>", height=0)
 
-# 2. 定義廳院代碼與配色馬甲 (排除中文字呈現)
+# 2. 定義廳院代碼與配色馬甲
 HALL_MAPS = {
-    "大劇院": {"display": "GT (Grand Theatre)", "color": "#0A84FF"},           # 藍色
-    "多形式中劇院": {"display": "BB (Black Box)", "color": "#FF375F"},         # 粉紅
-    "鏡框式中劇院": {"display": "GP (Grand Playhouse)", "color": "#FFD60A"},   # 金色
+    "大劇院": {"display": "GT (Grand Theatre)", "color": "#0A84FF"},
+    "多形式中劇院": {"display": "BB (Blue Box)", "color": "#FF375F"},
+    "鏡框式中劇院": {"display": "GP (Grand Playhouse)", "color": "#FFD60A"},
     "DEFAULT": {"display": "AV System", "color": "#FFFFFF"}
 }
 
@@ -35,23 +35,30 @@ macos_style = """
 """
 st.markdown(macos_style, unsafe_allow_html=True)
 
-# 4. 初始化與資料讀取 (根據上傳的檔案名稱)
-if 'search_query' not in st.session_state: st.session_state.search_query = ""
-def clear_search():
-    st.session_state.search_query = ""
-    st.session_state["search_input_widget"] = ""
-
+# 4. 資料讀取 (強化自動搜尋功能)
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
-        # 直接指定你上傳的 CSV 檔案名稱
-        df = pd.read_csv("Cable list 20201109.xlsx - 迴路盒.csv")
+        # 優先找包含「迴路盒」關鍵字的 CSV 或 XLSX
+        files = [f for f in os.listdir(".") if not f.startswith('~$')]
+        target = next((f for f in files if "迴路盒" in f or "Cable" in f), None)
+        
+        if not target:
+            return None, "找不到資料檔，請確認 CSV 是否在資料夾中。"
+
+        if target.endswith('.csv'):
+            # 增加 encoding='utf-8-sig' 處理 Excel 產生的 CSV 編碼問題
+            df = pd.read_csv(target, encoding='utf-8-sig')
+        else:
+            df = pd.read_excel(target)
+            
         df.columns = [c.strip() for c in df.columns]
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
             df['search_id'] = df['search_id'].apply(lambda x: x if x.startswith("AV") else "AV"+x)
         return df, "SUCCESS"
-    except Exception as e: return None, str(e)
+    except Exception as e:
+        return None, str(e)
 
 df, status = load_data()
 
@@ -59,17 +66,20 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">AV BOX SEARCH</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區塊
+    if 'search_query' not in st.session_state: st.session_state.search_query = ""
+    
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
         user_input = st.text_input("SEARCH", key="search_input_widget", placeholder="Enter ID (e.g. 07-02)", label_visibility="collapsed").strip()
         st.session_state.search_query = user_input
     with c2:
-        st.button("✕", on_click=clear_search)
+        if st.button("✕"):
+            st.session_state.search_query = ""
+            st.session_state["search_input_widget"] = ""
+            st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 搜尋結果
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
@@ -77,26 +87,21 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            # 取得原始廳名並映射到英文代碼馬甲
             raw_hall = str(info.get('廳別', 'N/A')).strip()
             badge = HALL_MAPS.get(raw_hall, HALL_MAPS["DEFAULT"])
 
-            # 結果卡片：顯示英文馬甲代碼
+            # 顯示英文馬甲
             st.markdown(f'''
                 <div class="macos-card" style="border-left: 5px solid {badge['color']};">
-                    <p style='color:{badge['color']}; font-size:12px; font-weight:700; margin-bottom:4px;'>
-                        {badge['display']}
-                    </p>
+                    <p style='color:{badge['color']}; font-size:12px; font-weight:700; margin-bottom:4px;'>{badge['display']}</p>
                     <h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>
                     <hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>
                 </div>
             ''', unsafe_allow_html=True)
             
-            # 詳細內容
             st.markdown('<div class="macos-card" style="margin-top:-20px;">', unsafe_allow_html=True)
             st.metric("LOCATION", badge['display'])
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
-            # 清理換行符號
             loc_detail = str(info.get('迴路盒位置', 'N/A')).replace('\\n', ' ').replace('\n', ' ')
             st.metric("POSITION DETAIL", loc_detail)
             st.markdown('</div>', unsafe_allow_html=True)
