@@ -28,7 +28,7 @@ st.markdown("""
 def load_data():
     # 修改處：將檔名改為您的 .xlsx 檔名
     # 注意：此處檔名必須與您上傳到 GitHub 的檔案名稱完全一致
-    file_path = "Cable list  音視訊 20201109.xlsx"
+    file_path = "Cable list 20201109.xlsx"
     try:
         # 修改處：使用 read_excel 並指定引擎為 openpyxl
         df = pd.read_excel(file_path, engine='openpyxl')
