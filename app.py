@@ -2,15 +2,15 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定 (極簡化佈局)
+# 1. 網頁基本設定
 st.set_page_config(
     page_title="AV 迴路盒系統",
     page_icon="🔍",
-    layout="centered", # 保持居中以符合 Apple 審美，但會透過 CSS 移除頂部空白
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# 2. 定製 Apple 視覺規範 CSS (移除頂部與多餘空白)
+# 2. 定製 Apple 視覺規範 CSS (徹底移除頂部空白)
 apple_css = """
 <style>
     /* 全域字體與背景 */
@@ -18,23 +18,28 @@ apple_css = """
     
     html, body, [class*="css"] {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: #F5F5F7; /* Apple 官方背景色 */
+        background-color: #F5F5F7; 
     }
 
-    /* 移除 Streamlit 預設的頂部空白與邊距 */
+    /* 徹底移除 Streamlit 所有預設空白 */
+    .stApp {
+        margin-top: -80px; /* 強制向上位移以抵銷預設間距 */
+    }
+
     .block-container {
-        padding-top: 2rem !important;
+        padding-top: 0rem !important;
         padding-bottom: 0rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
-        max-width: 600px; /* 限制寬度讓手機與電腦看起來都像一條精緻的卡片流 */
+        max-width: 600px;
     }
 
-    /* 隱藏 Streamlit 頂部狀態列 */
+    /* 隱藏所有系統介面元件 */
     header {visibility: hidden;}
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     .stDeployButton {display:none;}
+    [data-testid="stHeader"] {display: none;}
 
     /* 標題設計 */
     .main-title {
@@ -43,10 +48,11 @@ apple_css = """
         font-size: 28px;
         letter-spacing: -0.5px;
         text-align: center;
-        margin-bottom: 24px;
+        padding-top: 40px; /* 給標題適當的頂部距離 */
+        margin-bottom: 20px;
     }
 
-    /* Apple 卡片設計：去掉邊框，使用極細陰影 */
+    /* Apple 卡片設計 */
     .apple-card {
         background: white;
         border-radius: 20px;
@@ -63,22 +69,6 @@ apple_css = """
         border: none !important;
     }
 
-    /* iOS 藍按鈕樣式 */
-    .stButton>button {
-        width: 100%;
-        border-radius: 12px;
-        border: none;
-        background-color: #007AFF;
-        color: white;
-        font-weight: 600;
-        padding: 12px 0;
-        transition: transform 0.1s;
-    }
-    
-    .stButton>button:active {
-        transform: scale(0.98);
-    }
-
     /* 輸入框優化 */
     .stTextInput input {
         border-radius: 12px !important;
@@ -87,18 +77,22 @@ apple_css = """
         padding: 14px !important;
         font-size: 16px !important;
     }
+
+    /* 移除 table 的多餘邊距 */
+    .stTable {
+        margin-top: -10px;
+    }
 </style>
 """
 st.markdown(apple_css, unsafe_allow_html=True)
 
-# 3. 資料讀取邏輯 (保持自動識別)
+# 3. 資料讀取邏輯
 @st.cache_data
 def load_data():
     all_files = os.listdir(".")
     xlsx_files = [f for f in all_files if f.endswith('.xlsx')]
     
     target_file = None
-    # 優先尋找包含關鍵字的檔案
     for f in xlsx_files:
         if any(k in f for k in ["Cable", "音視訊", "迴路盒"]):
             target_file = f
@@ -132,14 +126,12 @@ if data_tuple:
     # 搜尋區
     with st.container():
         st.markdown('<div class="apple-card">', unsafe_allow_html=True)
-        user_input = st.text_input("搜尋編號", placeholder="例如: 04-01", label_visibility="collapsed")
-        
-        # 快捷按鈕 (手機橫向排列)
-        cols = st.columns(4)
-        samples = ["04-01", "04-02", "04-05", "04-08"]
-        for i, sid in enumerate(samples):
-            if cols[i].button(sid):
-                user_input = sid
+        # 更新搜尋列提示文字
+        user_input = st.text_input(
+            "搜尋編號", 
+            placeholder="輸入迴路盒編號 AV 04-01 或 04-01...", 
+            label_visibility="collapsed"
+        )
         st.markdown('</div>', unsafe_allow_html=True)
 
     if user_input:
@@ -179,7 +171,7 @@ if data_tuple:
                 show_cols = [c for c in ['迴路標示號碼', '線材', '目的地樓層', '機房名稱', '機櫃', '點位'] if c in match.columns]
                 st.dataframe(match[show_cols], use_container_width=True)
         else:
-            st.error("查無此編號。")
+            st.error("查無此編號，請重新輸入。")
     else:
         st.markdown('<p style="text-align:center; color:#8E8E93; font-size:14px;">輸入編號快速查詢位置與接口</p>', unsafe_allow_html=True)
 
@@ -187,4 +179,4 @@ else:
     st.error("⚠️ 找不到 Excel 檔案。")
 
 # 頁尾
-st.markdown(f'<p style="text-align:center; font-size:11px; color:#C7C7CC; margin-top:30px;">Version 1.7 (Pure Apple Style)</p>', unsafe_allow_html=True)
+st.markdown(f'<p style="text-align:center; font-size:11px; color:#C7C7CC; margin-top:30px;">Version 1.8 (Clean Apple Style)</p>', unsafe_allow_html=True)
