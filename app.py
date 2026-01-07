@@ -12,7 +12,7 @@ st.components.v1.html(f"<script>window.parent.document.title = '{APP_NAME}';</sc
 # 2. 定義廳院代碼對應表 (排除中文字呈現)
 HALL_MAPS = {
     "大劇院": {"display": "GT (Grand Theatre)", "color": "#0A84FF"},
-    "多形式中劇院": {"display": "BB (Blue Box)", "color": "#FF375F"},
+    "多形式中劇院": {"display": "BB (Black Box)", "color": "#FF375F"},
     "鏡框式中劇院": {"display": "GP (Grand Playhouse)", "color": "#FFD60A"},
     "DEFAULT": {"display": "AV System", "color": "#FFFFFF"}
 }
