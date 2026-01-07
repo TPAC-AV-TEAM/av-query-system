@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. 進階 macOS 26 視覺規範 (移除空白與防換行)
+# 2. 進階 macOS 26 視覺規範
 macos_26_style = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -18,6 +18,11 @@ macos_26_style = """
         background-color: #000000;
         color: #F5F5F7;
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
+    }
+
+    /* 緊湊佈局：移除標題下方的多餘空白 */
+    .search-container {
+        margin-top: -20px !important;
     }
 
     /* 強制行動端搜尋欄不換行 */
@@ -33,7 +38,7 @@ macos_26_style = """
         flex: 1 1 auto !important;
     }
     [data-testid="column"]:nth-child(2) {
-        flex: 0 0 45px !important; /* 固定按鈕寬度 */
+        flex: 0 0 45px !important;
     }
 
     .block-container {
@@ -50,10 +55,9 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 10px;
+        margin-bottom: 5px; /* 縮小標題底部間距 */
     }
 
-    /* 卡片設計：僅在有內容時顯示 */
     .macos-card {
         background: rgba(30, 30, 32, 0.6);
         backdrop-filter: blur(20px);
@@ -64,7 +68,6 @@ macos_26_style = """
         margin-bottom: 15px;
     }
 
-    /* 搜尋輸入框 */
     .stTextInput > div > div > input {
         border-radius: 12px !important;
         background-color: rgba(255, 255, 255, 0.05) !important;
@@ -74,7 +77,6 @@ macos_26_style = """
         font-size: 16px !important;
     }
 
-    /* 清除按鈕 (X) */
     .stButton > button {
         border-radius: 12px !important;
         width: 42px !important;
@@ -82,7 +84,6 @@ macos_26_style = """
         background-color: rgba(255, 255, 255, 0.08) !important;
         border: 0.5px solid rgba(255, 255, 255, 0.1) !important;
         color: #FFFFFF !important;
-        margin-top: 0px !important;
     }
 
     [data-testid="stMetricValue"] { font-size: 22px !important; }
@@ -99,7 +100,7 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取 (核心邏輯保持穩定)
+# 4. 資料讀取
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
@@ -122,8 +123,8 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區塊 (僅用一個容器包裹)
-    st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+    # 搜尋區塊 (加入 search-container class 控制間距)
+    st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
         user_input = st.text_input(
@@ -150,9 +151,11 @@ if df is not None:
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            mc1, mc2 = st.columns(2)
-            mc1.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
-            mc2.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
+            # 將詳細位置移到廳別下方 (移除 mc1, mc2 欄位設計)
+            st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
+            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) # 增加一點點垂直間距
+            st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
+            
             st.markdown('</div>', unsafe_allow_html=True)
 
             # 結果卡片：詳細清單
@@ -165,6 +168,7 @@ if df is not None:
         else:
             st.error("查無此編號")
     else:
+        # 移除了原本可能產生的空白間距
         st.markdown('<p class="status-text">READY TO SCAN</p>', unsafe_allow_html=True)
 else:
     st.error(f"系統故障: {status}")
