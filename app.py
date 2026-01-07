@@ -9,13 +9,12 @@ st.set_page_config(page_title=APP_NAME, page_icon="🕶️", layout="centered")
 # 強制修改標題 (解決 Android 安裝名稱問題)
 st.components.v1.html(f"<script>window.parent.document.title = '{APP_NAME}';</script>", height=0)
 
-# 2. 定義廳院代碼與配色馬甲
-# 對應：大劇院=GT, 多形式中劇院=BB, 鏡框式中劇院=GP
+# 2. 定義廳院代碼對應表 (排除中文字呈現)
 HALL_MAPS = {
-    "大劇院": {"code": "GT", "color": "#0A84FF"},           # 藍色
-    "多形式中劇院": {"code": "BB", "color": "#FF375F"},     # 粉紅
-    "鏡框式中劇院": {"code": "GP", "color": "#FFD60A"},     # 金色
-    "DEFAULT": {"code": "AV", "color": "#FFFFFF"}
+    "大劇院": {"display": "GT (Grand Theatre)", "color": "#0A84FF"},
+    "多形式中劇院": {"display": "BB (Blue Box)", "color": "#FF375F"},
+    "鏡框式中劇院": {"display": "GP (Grand Playhouse)", "color": "#FFD60A"},
+    "DEFAULT": {"display": "AV System", "color": "#FFFFFF"}
 }
 
 # 3. macOS 26 視覺規範
@@ -32,16 +31,6 @@ macos_style = """
     .stButton > button { border-radius: 12px !important; background-color: rgba(255, 255, 255, 0.08) !important; color: #FFFFFF !important; }
     [data-testid="stMetricValue"] { font-size: 22px !important; }
     .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
-    
-    /* 馬甲標籤樣式 */
-    .hall-badge {
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 700;
-        margin-left: 10px;
-        border: 1px solid;
-    }
 </style>
 """
 st.markdown(macos_style, unsafe_allow_html=True)
@@ -55,16 +44,8 @@ def clear_search():
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
-        # 自動搜尋目錄下的 Excel 或 CSV
-        xlsx_files = [f for f in os.listdir(".") if f.endswith('.xlsx') or f.endswith('.csv') and not f.startswith('~$')]
-        target_file = next((f for f in xlsx_files if any(k in f for k in ["Cable", "音視訊", "迴路盒"])), None)
-        if not target_file: return None, "NO_FILE"
-        
-        if target_file.endswith('.csv'):
-            df = pd.read_csv(target_file)
-        else:
-            df = pd.read_excel(target_file)
-            
+        # 直接使用 CSV 檔案
+        df = pd.read_csv("Cable list  音視訊 20201109.xlsx - 迴路盒.csv")
         df.columns = [c.strip() for c in df.columns]
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
@@ -78,7 +59,6 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區塊
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
@@ -88,7 +68,6 @@ if df is not None:
         st.button("✕", on_click=clear_search)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 搜尋結果
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
@@ -96,16 +75,15 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            # 取得原始廳名並清理空白
+            # 取得原始廳名並獲取馬甲資訊
             raw_hall = str(info.get('廳別', 'N/A')).strip()
-            # 獲取馬甲資訊
             badge = HALL_MAPS.get(raw_hall, HALL_MAPS["DEFAULT"])
 
             # 結果卡片：基本資訊
             st.markdown(f'''
                 <div class="macos-card" style="border-left: 5px solid {badge['color']};">
-                    <p style='color:{badge['color']}; font-size:11px; font-weight:700; margin-bottom:4px;'>
-                        SYSTEM SCAN OK <span class="hall-badge" style="color:{badge['color']}; border-color:{badge['color']};">{badge['code']}</span>
+                    <p style='color:{badge['color']}; font-size:12px; font-weight:700; margin-bottom:4px;'>
+                        {badge['display']}
                     </p>
                     <h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>
                     <hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>
@@ -114,16 +92,16 @@ if df is not None:
             
             # 詳細內容
             st.markdown('<div class="macos-card" style="margin-top:-20px;">', unsafe_allow_html=True)
-            st.metric("廳別", raw_hall)
+            # 標籤顯示馬甲名稱，而非原始中文字
+            st.metric("LOCATION", badge['display'])
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
-            # 處理詳細位置中的換行符號
             loc_detail = str(info.get('迴路盒位置', 'N/A')).replace('\\n', ' ').replace('\n', ' ')
-            st.metric("詳細位置", loc_detail)
+            st.metric("POSITION DETAIL", loc_detail)
             st.markdown('</div>', unsafe_allow_html=True)
 
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
-                st.markdown(f"<p style='color:{badge['color']}; font-size:14px; margin-bottom:10px;'>📦 {badge['code']} 接口清單</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:{badge['color']}; font-size:14px; margin-bottom:10px;'>📦 {badge['display']} 接口清單</p>", unsafe_allow_html=True)
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 st.dataframe(summary, hide_index=True, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
