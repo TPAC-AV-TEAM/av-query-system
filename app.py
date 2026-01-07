@@ -95,6 +95,12 @@ macos_26_style = """
 
     [data-testid="stMetricValue"] { font-size: 22px !important; }
     .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
+
+    /* 新增：強制顯示表格右上方的工具列 (...) */
+    [data-testid="stElementToolbar"] {
+        opacity: 1 !important;
+        display: block !important;
+    }
 </style>
 """
 st.markdown(macos_26_style, unsafe_allow_html=True)
@@ -168,10 +174,16 @@ if df is not None:
                 # 直接進行完整分組
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 
-                # 透過 column_order 控制初始顯示，不顯示的欄位會在 st.dataframe 的內建清單中
+                # 修改部分：加入 column_config 讓「接頭數」置中
                 st.dataframe(
                     summary, 
-                    column_order=("系統", "接頭", "接頭數"), # 這裡排除了 "接頭型式"
+                    column_order=("系統", "接頭", "接頭數"),
+                    column_config={
+                        "接頭數": st.column_config.Column(
+                            width="small",
+                            alignment="center"  # 設定置中
+                        )
+                    },
                     hide_index=True, 
                     use_container_width=True
                 )
