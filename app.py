@@ -4,31 +4,25 @@ import os
 
 # 1. 網頁基本設定
 st.set_page_config(
-    page_title="AV系統-A館", 
+    page_title="AV系統-A館", # <--- 修改這裡
     page_icon="🕶️",
     layout="centered"
 )
 
-# 使用更強制的 JavaScript 注入，直接改寫伺服器傳回的 DOM 標題與 meta 標籤
-st.components.v1.html(
-    """
+# 使用更安全的方式注入標題，避免干擾 PWA 判定
+st.markdown(
+    f"""
     <script>
-        // 強制修改頂層文件標題
-        window.parent.document.title = "AV系統-A館";
-        
-        // 針對 Android Chrome PWA 抓取的特殊處理
-        var meta = window.parent.document.createElement('meta');
-        meta.name = "apple-mobile-web-app-title";
-        meta.content = "AV系統-A館";
-        window.parent.document.getElementsByTagName('head')[0].appendChild(meta);
-        
-        var metaPWA = window.parent.document.createElement('meta');
-        metaPWA.name = "application-name";
-        metaPWA.content = "AV系統-A館";
-        window.parent.document.getElementsByTagName('head')[0].appendChild(metaPWA);
+        var updateTitle = function() {{
+            var title = "AV系統-A館";
+            window.parent.document.title = title;
+            var meta = window.parent.document.querySelector('meta[name="application-name"]');
+            if (meta) meta.content = title;
+        }};
+        updateTitle();
     </script>
     """,
-    height=0,
+    unsafe_allow_html=True,
 )
 
 # 2. 進階 macOS 26 視覺規範
@@ -42,9 +36,9 @@ macos_26_style = """
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
     }
 
-    /* 修正後的搜尋容器間距 */
+    /* 調整間距，讓標題與搜尋框保持適當距離但不擋住 */
     .search-container {
-        margin-top: 5px !important;
+        margin-top: 10px !important;
         margin-bottom: 15px !important;
     }
 
@@ -70,7 +64,7 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }
 
     .macos-card {
@@ -102,7 +96,7 @@ macos_26_style = """
 """
 st.markdown(macos_26_style, unsafe_allow_html=True)
 
-# 3. 初始化狀態
+# 3. 初始化
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
@@ -110,7 +104,7 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取邏輯
+# 4. 資料讀取
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
@@ -132,7 +126,6 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區塊
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
@@ -146,7 +139,6 @@ if df is not None:
         st.button("✕", on_click=clear_search)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 搜尋結果與顯示
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
@@ -159,7 +151,6 @@ if df is not None:
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            # 詳細位置排列在廳別下方
             st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
