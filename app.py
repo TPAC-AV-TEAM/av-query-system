@@ -9,24 +9,35 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. 初始化 Session State
-if 'search_input' not in st.session_state:
-    st.session_state.search_input = ""
+# 2. 初始化 Session State (確保字體大小被正確追蹤)
 if 'df_font_size' not in st.session_state:
-    st.session_state.df_font_size = 18  # 預設表格字體大小
+    st.session_state.df_font_size = 18
 
-# --- 功能控制函式 ---
-def handle_clear():
-    st.session_state.search_input_widget = ""
-
+# --- 縮放功能函式 (加入 rerun 確保即時反應) ---
 def zoom_in():
     st.session_state.df_font_size += 2
+    st.rerun()
 
 def zoom_out():
     if st.session_state.df_font_size > 12:
         st.session_state.df_font_size -= 2
+        st.rerun()
 
-# 3. 注入動態 CSS (包含表格字體縮放與按鈕樣式)
+def handle_clear():
+    if 'search_input_widget' in st.session_state:
+        st.session_state.search_input_widget = ""
+    st.rerun()
+
+# 3. 注入 PWA 標籤
+st.markdown("""
+<head>
+    <meta name="apple-mobile-web-app-title" content="AV系統">
+    <meta name="theme-color" content="#000000">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+</head>
+""", unsafe_allow_html=True)
+
+# 4. 強化版動態 CSS (針對表格字體進行硬核控制)
 dynamic_style = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -45,52 +56,41 @@ dynamic_style = f"""
         margin-bottom: 15px;
     }}
 
-    /* 強制併排佈局 (用於搜尋框與標題列按鈕) */
+    /* 強制併排 */
     [data-testid="stHorizontalBlock"] {{ 
-        display: flex !important; 
-        flex-direction: row !important; 
-        align-items: center !important; 
-        gap: 8px !important; 
+        display: flex !important; flex-direction: row !important; align-items: center !important; gap: 8px !important; 
     }}
 
-    /* 搜尋框與縮放按鈕樣式 */
+    /* 搜尋框與按鈕 */
     .stTextInput > div > div > input {{ 
-        height: 50px !important; font-size: 18px !important; 
-        background: rgba(255,255,255,0.1) !important; color: white !important; border-radius: 12px !important;
+        height: 50px !important; font-size: 18px !important; background: rgba(255,255,255,0.1) !important; color: white !important;
     }}
     
-    /* 縮放專用按鈕 (細長 macOS 質感) */
     .zoom-btn button {{
-        height: 35px !important;
-        border-radius: 8px !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        color: white !important;
-        font-size: 14px !important;
-        padding: 0 !important;
-    }}
-    .zoom-btn button:active {{ transform: scale(0.9) !important; background: rgba(255, 255, 255, 0.3) !important; }}
-
-    /* 清除按鈕 X */
-    .clear-btn button {{
-        width: 50px !important; height: 50px !important; border-radius: 50% !important;
-        background: rgba(255, 255, 255, 0.2) !important; border: none !important;
+        height: 40px !important; border-radius: 10px !important;
+        background: rgba(255, 255, 255, 0.15) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: white !important; font-size: 16px !important; font-weight: bold !important;
     }}
 
-    /* --- 表格字體縮放連動 --- */
-    [data-testid="stDataFrame"] div[data-testid="stTable"] td, 
-    [data-testid="stDataFrame"] div[data-testid="stTable"] th,
-    .stDataFrame div {{
+    /* --- 核心字體縮放控制 (針對所有表格形式) --- */
+    /* 針對 st.table (HTML 型式) */
+    .stTable td, .stTable th {{
+        font-size: {st.session_state.df_font_size}px !important;
+        color: #FFFFFF !important;
+        padding: 12px 8px !important;
+    }}
+    
+    /* 針對 st.dataframe (Canvas 容器型式) */
+    [data-testid="stDataFrame"] {{
         font-size: {st.session_state.df_font_size}px !important;
     }}
 
-    [data-testid="stMetricValue"] {{ font-size: 38px !important; font-weight: 700 !important; color: #0A84FF !important; }}
-    [data-testid="stMetricLabel"] {{ font-size: 16px !important; color: #8E8E93 !important; }}
+    [data-testid="stMetricValue"] {{ font-size: 38px !important; color: #0A84FF !important; }}
 </style>
 """
 st.markdown(dynamic_style, unsafe_allow_html=True)
 
-# 4. 資料讀取邏輯
+# 5. 資料讀取
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
@@ -106,68 +106,61 @@ def load_data():
 
 df = load_data()
 
-# 5. 介面呈現
+# 6. 介面呈現
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # --- 搜尋區 ---
+    # 搜尋區
     st.markdown('<div class="macos-card">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.8, 0.2])
     with c1:
         user_input = st.text_input("SEARCH", placeholder="輸入編號", label_visibility="collapsed", key="search_input_widget").strip()
     with c2:
-        st.markdown('<div class="clear-btn">', unsafe_allow_html=True)
-        st.button("✕", on_click=handle_clear)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.button("✕", on_click=handle_clear, key="clear_main")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    search_query = st.session_state.search_input_widget
-    
-    if search_query:
-        query = search_query.upper().replace(' ', '').replace('-', '')
+    if st.session_state.search_input_widget:
+        query = st.session_state.search_input_widget.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
         match = df[df['search_id'] == query]
 
         if not match.empty:
             info = match.iloc[0]
-            # 基本資訊
+            # 基本資訊卡
             st.markdown(f"""
             <div class="macos-card">
                 <p style='color:#0A84FF; font-size:12px; font-weight:700;'>LOCATED: {info['迴路盒編號']}</p>
-                <div style='display:flex; justify-content:space-between; margin-top:10px;'>
-                    <div style='flex:1;'><p style='color:#8E8E93; font-size:14px; margin:0;'>廳別</p><p style='font-size:24px; font-weight:700; margin:0;'>{str(info['廳別']).split('\\n')[0]}</p></div>
-                    <div style='flex:1; text-align:right;'><p style='color:#8E8E93; font-size:14px; margin:0;'>位置</p><p style='font-size:18px; margin:0;'>{str(info['迴路盒位置'])}</p></div>
+                <div style='display:flex; justify-content:space-between; align-items:flex-end;'>
+                    <div><p style='color:#8E8E93; font-size:14px; margin:0;'>廳別</p><p style='font-size:26px; font-weight:700; margin:0;'>{str(info['廳別']).split('\\n')[0]}</p></div>
+                    <div style='text-align:right;'><p style='color:#8E8E93; font-size:14px; margin:0;'>位置</p><p style='font-size:20px; font-weight:600; margin:0;'>{str(info['迴路盒位置'])}</p></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-            # --- 1. 接口清單 (含側邊縮放鈕) ---
-            if '系統' in match.columns:
-                st.markdown('<div class="macos-card">', unsafe_allow_html=True)
-                
-                # 標題列 + 縮放按鈕
-                t1, t2, t3 = st.columns([0.6, 0.2, 0.2])
-                t1.markdown("<p style='font-size:18px; font-weight:600; color:#8E8E93; margin:0;'>📦 接口清單</p>", unsafe_allow_html=True)
-                with t2:
-                    st.markdown('<div class="zoom-btn">', unsafe_allow_html=True)
-                    st.button("A -", key="z1_out", on_click=zoom_out)
-                    st.markdown('</div>', unsafe_allow_html=True)
-                with t3:
-                    st.markdown('<div class="zoom-btn">', unsafe_allow_html=True)
-                    st.button("A +", key="z1_in", on_click=zoom_in)
-                    st.markdown('</div>', unsafe_allow_html=True)
-                
-                summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
-                summary.columns = ['系統', '接頭', '型式', '數量']
-                st.dataframe(summary, hide_index=True, use_container_width=True, column_config={"數量": st.column_config.NumberColumn(format="%d")})
+            # --- 1. 接口清單 (改用 st.table 確保字體縮放 100% 成功) ---
+            st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+            t1, t2, t3 = st.columns([0.6, 0.2, 0.2])
+            t1.markdown(f"<p style='font-size:18px; font-weight:600; color:#8E8E93; margin:0;'>📦 接口清單 ({st.session_state.df_font_size}px)</p>", unsafe_allow_html=True)
+            with t2:
+                st.markdown('<div class="zoom-btn">', unsafe_allow_html=True)
+                st.button("A -", key="z1_out", on_click=zoom_out)
                 st.markdown('</div>', unsafe_allow_html=True)
+            with t3:
+                st.markdown('<div class="zoom-btn">', unsafe_allow_html=True)
+                st.button("A +", key="z1_in", on_click=zoom_in)
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
+            summary.columns = ['系統', '接頭', '型式', '數量']
+            # 使用 st.table 確保字體縮放穩定
+            st.table(summary)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            # --- 2. 詳細明細 (含側邊縮放鈕) ---
+            # --- 2. 詳細明細 ---
             with st.expander("🔍 完整目的地明細", expanded=True):
-                # 展開後內部的標題與按鈕
                 st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
                 e1, e2, e3 = st.columns([0.6, 0.2, 0.2])
-                e1.markdown(f"<p style='color:#8E8E93; font-size:14px; margin-top:8px;'>字體: {st.session_state.df_font_size}px</p>", unsafe_allow_html=True)
+                e1.markdown(f"<p style='color:#8E8E93; font-size:14px;'>調整明細字體:</p>", unsafe_allow_html=True)
                 with e2:
                     st.markdown('<div class="zoom-btn">', unsafe_allow_html=True)
                     st.button("A -", key="z2_out", on_click=zoom_out)
@@ -178,10 +171,11 @@ if df is not None:
                     st.markdown('</div>', unsafe_allow_html=True)
                 
                 show_cols = [c for c in ['迴路標示號碼', '線材', '目的地樓層', '機房名稱', '機櫃', '點位'] if c in match.columns]
+                # 詳細明細保留為 dataframe 以供拖拉
                 st.dataframe(match[show_cols], use_container_width=True, hide_index=True)
         else:
             st.error("查無此編號。")
     else:
-        st.markdown('<p style="text-align:center; color:#48484A; font-size:14px;">READY TO SCAN</p>', unsafe_allow_html=True)
+        st.markdown('<p style="text-align:center; color:#48484A; font-size:14px;">READY</p>', unsafe_allow_html=True)
 else:
     st.error("找不到資料檔案。")
