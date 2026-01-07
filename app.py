@@ -2,9 +2,10 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定
+# 1. 網頁基本設定 (請修改 page_title 以區分不同 App)
+# App A 設為 "AV系統-A館", App B 設為 "AV系統-B館"
 st.set_page_config(
-    page_title="AV System OS 26",
+    page_title="AV系統-A館", 
     page_icon="🕶️",
     layout="centered"
 )
@@ -20,9 +21,10 @@ macos_26_style = """
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
     }
 
-    /* 緊湊佈局：移除標題下方的多餘空白 */
+    /* 緊湊佈局：強制移除搜尋框上方的所有間距 */
     .search-container {
-        margin-top: -20px !important;
+        margin-top: -35px !important;
+        margin-bottom: 10px !important;
     }
 
     /* 強制行動端搜尋欄不換行 */
@@ -55,7 +57,7 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 5px; /* 縮小標題底部間距 */
+        margin-bottom: 5px;
     }
 
     .macos-card {
@@ -100,7 +102,7 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取
+# 4. 資料讀取 (核心邏輯保持穩定)
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
@@ -146,14 +148,14 @@ if df is not None:
         if not match.empty:
             info = match.iloc[0]
             # 結果卡片：基本資訊
-            st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+            st.markdown('<div class="macos-card" style="margin-top:-5px;">', unsafe_allow_html=True)
             st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            # 將詳細位置移到廳別下方 (移除 mc1, mc2 欄位設計)
+            # --- 重點修改：垂直顯示 ---
             st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
-            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) # 增加一點點垂直間距
+            st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True) 
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -168,7 +170,6 @@ if df is not None:
         else:
             st.error("查無此編號")
     else:
-        # 移除了原本可能產生的空白間距
         st.markdown('<p class="status-text">READY TO SCAN</p>', unsafe_allow_html=True)
 else:
     st.error(f"系統故障: {status}")
