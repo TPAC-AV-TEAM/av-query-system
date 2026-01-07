@@ -4,151 +4,180 @@ import os
 
 # 1. 網頁基本設定
 st.set_page_config(
-    page_title="AV 現場極致版", 
-    page_icon="🔍",
+    page_title="AV System OS 26",
+    page_icon="🕶️",
     layout="centered"
 )
 
-# 2. 注入手機 PWA 與 42px+ 極致大字樣式
-macos_extreme_css = """
+# 2. 進階 macOS 26 視覺規範 (新增清除按鈕樣式)
+macos_26_advanced_css = """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    .stApp { background-color: #000000; color: #F5F5F7; }
-    header, footer, .stDeployButton, [data-testid="stHeader"] { display: none !important; }
-
-    /* 搜尋列併排強制修正 */
-    [data-testid="stHorizontalBlock"] { 
-        display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px !important; 
+    .stApp {
+        background-color: #000000;
+        color: #F5F5F7;
+        font-family: "SF Pro Display", "-apple-system", "BlinkMacSystemFont", "Inter", sans-serif;
     }
 
-    /* 搜尋輸入框 (加大觸控區) */
-    .stTextInput > div > div > input { 
-        height: 60px !important; font-size: 22px !important; 
-        background: rgba(255,255,255,0.1) !important; color: white !important; border-radius: 15px !important;
+    .block-container {
+        padding-top: 1.5rem !important;
+        max-width: 650px;
     }
 
-    /* 磨砂卡片 */
-    .extreme-card {
-        background: rgba(44, 44, 46, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+    header, footer, .stDeployButton, [data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    .main-title {
+        font-weight: 700;
+        background: linear-gradient(180deg, #FFFFFF 0%, #8E8E93 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 34px;
+        letter-spacing: -1px;
+        text-align: center;
+        padding: 20px 0 5px 0;
+    }
+
+    .macos-card {
+        background: rgba(30, 30, 32, 0.65);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border: 0.5px solid rgba(255, 255, 255, 0.15);
         border-radius: 24px;
-        padding: 25px;
-        margin-bottom: 20px;
+        padding: 24px;
+        margin-bottom: 18px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        margin-top: -5px;
     }
 
-    /* 標籤文字 (例如：系統、型式) */
-    .label-text { color: #8E8E93; font-size: 18px; margin-bottom: 5px; }
-
-    /* --- 極致大字重點 (42px) --- */
-    .big-value { 
-        font-size: 42px !important; 
-        font-weight: 700; 
-        color: #FFFFFF; 
-        line-height: 1.2;
-        word-wrap: break-word;
+    /* 搜尋框與清除按鈕的容器優化 */
+    .stTextInput > div > div > input {
+        border-radius: 14px !important;
+        background-color: rgba(0, 0, 0, 0.4) !important;
+        border: 0.5px solid rgba(255, 255, 255, 0.1) !important;
+        color: #FFFFFF !important;
+        padding: 12px 16px !important;
     }
 
-    .qty-highlight { 
-        font-size: 56px !important; 
-        color: #0A84FF; 
-        font-weight: 800;
-        text-align: right;
+    /* 自定義清除按鈕樣式 */
+    .stButton > button {
+        border-radius: 50% !important;
+        width: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border: none !important;
+        color: #8E8E93 !important;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button:hover {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: #FFFFFF !important;
+        transform: scale(1.05);
     }
 
-    /* 完整明細表格字體同步放大 */
-    .stDataFrame td, .stDataFrame th {
-        font-size: 28px !important;
-    }
+    [data-testid="stDataFrame"] { border: none !important; }
+    [data-testid="stMetricValue"] { font-size: 24px !important; letter-spacing: -0.5px; }
 </style>
 """
-st.markdown(macos_extreme_css, unsafe_allow_html=True)
+st.markdown(macos_26_advanced_css, unsafe_allow_html=True)
 
-# 3. 功能函式
-def handle_clear():
-    st.session_state.search_input_widget = ""
+# 3. 初始化 Session State (用於清除功能)
+if 'search_query' not in st.session_state:
+    st.session_state.search_query = ""
 
-# 4. 資料讀取 (強制處理數量格式)
+def clear_search():
+    st.session_state.search_query = ""
+
+# 4. 資料讀取邏輯
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
-        all_files = [f for f in os.listdir(".") if f.endswith('.xlsx') and not f.startswith('~$')]
-        target_file = next((f for f in all_files if any(k in f for k in ["Cable", "音視訊", "迴路盒"])), all_files[0] if all_files else None)
-        if not target_file: return None
+        all_files = os.listdir(".")
+        xlsx_files = [f for f in all_files if f.endswith('.xlsx') and not f.startswith('~$')]
+        target_file = next((f for f in xlsx_files if any(k in f for k in ["Cable", "音視訊", "迴路盒"])), None)
+        if not target_file and xlsx_files: target_file = xlsx_files[0]
+        if not target_file: return None, "NO_FILE"
+
         df = pd.read_excel(target_file, engine='openpyxl')
         df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
         if '接頭數' in df.columns:
             df['接頭數'] = pd.to_numeric(df['接頭數'], errors='coerce').fillna(0).astype(int)
-        return df
-    except: return None
+        return df, target_file
+    except Exception as e:
+        return None, str(e)
 
-df = load_data()
+df, status = load_data()
 
 # 5. 介面呈現
-st.markdown('<h2 style="text-align:center; color:#8E8E93;">AV 迴路盒查詢</h2>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區
-    st.markdown('<div class="extreme-card">', unsafe_allow_html=True)
-    c1, c2 = st.columns([0.8, 0.2])
-    with c1:
-        user_input = st.text_input("S", placeholder="輸入編號", label_visibility="collapsed", key="search_input_widget").strip()
-    with c2:
-        st.button("✕", on_click=handle_clear)
+    # 搜尋區 (雙欄佈局實現清除按鈕)
+    st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+    col_input, col_clear = st.columns([0.88, 0.12])
+    
+    with col_input:
+        user_input = st.text_input(
+            "SEARCH", 
+            value=st.session_state.search_query,
+            placeholder="輸入編號 (例如: 04-01)", 
+            label_visibility="collapsed",
+            key="search_input_field"
+        ).strip()
+        # 更新 state
+        st.session_state.search_query = user_input
+
+    with col_clear:
+        # 如果輸入框有內容，才顯示明顯的清除按鈕，或者始終顯示
+        st.button("✕", on_click=clear_search, help="清除搜尋結果")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    search_query = st.session_state.search_input_widget
-    
-    if search_query:
-        query = search_query.upper().replace(' ', '').replace('-', '')
+    if st.session_state.search_query:
+        query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
         match = df[df['search_id'] == query]
 
         if not match.empty:
             info = match.iloc[0]
             
-            # 1. 核心位置卡片 (超大字)
-            st.markdown(f"""
-            <div class="extreme-card" style="border-left: 8px solid #0A84FF;">
-                <div class="label-text">迴路盒位置</div>
-                <div class="big-value">{info['迴路盒位置']}</div>
-                <div style="height:20px;"></div>
-                <div class="label-text">廳別</div>
-                <div class="big-value" style="color:#0A84FF;">{str(info['廳別']).split('\\n')[0]}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            # 資訊卡片
+            st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+            st.markdown(f"<p style='color:#0A84FF; font-size:12px; font-weight:700; letter-spacing:1px; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='margin:0; font-size:28px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
+            st.markdown("<div style='height:1px; background:rgba(255,255,255,0.08); margin:18px 0;'></div>", unsafe_allow_html=True)
+            
+            c1, c2 = st.columns(2)
+            c1.metric("廳別", str(info['廳別']).split('\n')[0])
+            c2.metric("詳細位置", str(info['迴路盒位置']).replace('\n', ' '))
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            # 2. 接口清單 (改用卡片清單達成 42px+)
+            # 接口統計
             if '系統' in match.columns:
-                st.markdown("<h3 style='margin-left:10px; color:#8E8E93;'>📦 接口清單</h3>", unsafe_allow_html=True)
+                st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+                st.markdown("<h3 style='margin:0 0 15px 0; font-size:16px; color:#8E8E93;'>📦 接口清單</h3>", unsafe_allow_html=True)
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
-                
-                for _, row in summary.iterrows():
-                    st.markdown(f"""
-                    <div class="extreme-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div style="flex:1;">
-                                <div class="label-text">系統</div>
-                                <div class="big-value" style="font-size:36px !important;">{row['系統']}</div>
-                                <div style="height:10px;"></div>
-                                <div class="label-text">接頭 / 型式</div>
-                                <div style="font-size:24px; color:#FFFFFF;">{row['接頭']} ({row['型式']})</div>
-                            </div>
-                            <div style="width:100px; text-align:right;">
-                                <div class="label-text">數量</div>
-                                <div class="qty-highlight">{int(row['數量'])}</div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                summary.columns = ['系統', '接頭', '型式', '數量']
+                st.dataframe(
+                    summary, 
+                    hide_index=True, 
+                    use_container_width=True,
+                    column_config={"數量": st.column_config.NumberColumn("數量", format="%d")}
+                )
+                st.markdown('</div>', unsafe_allow_html=True)
 
-            # 3. 詳細明細 (保留表格供參考)
-            with st.expander("🔍 完整目的地明細"):
+            with st.expander("🔍 完整路徑目的地"):
                 show_cols = [c for c in ['迴路標示號碼', '線材', '目的地樓層', '機房名稱', '機櫃', '點位'] if c in match.columns]
                 st.dataframe(match[show_cols], use_container_width=True, hide_index=True)
         else:
-            st.error("查無此編號。")
+            st.error("查無此編號，請重新確認。")
     else:
-        st.markdown('<p style="text-align:center; color:#48484A; font-size:18px;">請輸入編號開始掃描</p>', unsafe_allow_html=True)
+        st.markdown('<p style="text-align:center; color:#48484A; font-size:13px; letter-spacing:1px;">READY TO SCAN</p>', unsafe_allow_html=True)
 else:
-    st.error("找不到 Excel 檔案。")
+    st.error(f"系統故障: {status}")
+
+# 頁尾
+st.markdown('<p style="text-align:center; font-size:10px; color:#3A3A3C; margin-top:50px; letter-spacing: 2px;">OS 26 TERMINAL // NO ACCESS LOGS</p>', unsafe_allow_html=True)
