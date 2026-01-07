@@ -96,9 +96,10 @@ macos_26_style = """
     [data-testid="stMetricValue"] { font-size: 22px !important; }
     .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
 
-    /* 新增：強制顯示表格右上方的工具列 (...) */
+    /* --- 修改處：強制表格右上方的工具列 (...) 永遠顯示 --- */
     [data-testid="stElementToolbar"] {
         opacity: 1 !important;
+        visibility: visible !important;
         display: block !important;
     }
 </style>
@@ -174,14 +175,14 @@ if df is not None:
                 # 直接進行完整分組
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 
-                # 修改部分：加入 column_config 讓「接頭數」置中
+                # --- 修改處：使用 NumberColumn 並設定 alignment="center" ---
                 st.dataframe(
                     summary, 
                     column_order=("系統", "接頭", "接頭數"),
                     column_config={
-                        "接頭數": st.column_config.Column(
-                            width="small",
-                            alignment="center"  # 設定置中
+                        "接頭數": st.column_config.NumberColumn(
+                            "接頭數",
+                            alignment="center"
                         )
                     },
                     hide_index=True, 
