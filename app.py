@@ -2,18 +2,18 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定 (這是 Android 安裝時抓取名稱的最高優先級)
+# 1. 網頁基本設定
 st.set_page_config(
-    page_title="AV系統-A館", 
+    page_title="迴路盒查詢", # <--- 修改處 1
     page_icon="🕶️",
     layout="centered"
 )
 
-# 解決 Android 安裝名稱問題 (維持你測試成功的結構)
+# 解決 Android 安裝名稱問題的 JavaScript
 st.components.v1.html(
     f"""
     <script>
-        window.parent.document.title = "AV系統-A館";
+        window.parent.document.title = "迴路盒查詢"; // <--- 修改處 2
     </script>
     """,
     height=0,
@@ -30,10 +30,10 @@ macos_26_style = """
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
     }
 
-    /* 關鍵修正：調整搜尋容器間距，確保不擋住標題 */
+    /* 修正：調整間距，避免搜尋框擋住標題 */
     .search-container {
-        margin-top: 10px !important;
-        margin-bottom: 20px !important;
+        margin-top: 5px !important; /* 恢復正常間距，移除激進的負值 */
+        margin-bottom: 15px !important;
     }
 
     [data-testid="stHorizontalBlock"] {
@@ -52,7 +52,7 @@ macos_26_style = """
     }
 
     .block-container {
-        padding-top: 2.5rem !important;
+        padding-top: 2rem !important; /* 增加頂部留白，給標題空間 */
         max-width: 600px;
     }
 
@@ -65,7 +65,7 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 15px; /* 給予標題與下方組件足夠空間 */
+        margin-bottom: 20px; /* 增加標題下方間距，防止重疊 */
     }
 
     .macos-card {
@@ -83,6 +83,8 @@ macos_26_style = """
         background-color: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         color: #FFFFFF !important;
+        padding: 10px 14px !important;
+        font-size: 16px !important;
     }
 
     .stButton > button {
@@ -95,12 +97,12 @@ macos_26_style = """
     }
 
     [data-testid="stMetricValue"] { font-size: 22px !important; }
-    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
+    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 10px; }
 </style>
 """
 st.markdown(macos_26_style, unsafe_allow_html=True)
 
-# 3. 初始化功能
+# 3. 初始化與功能函數
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
@@ -152,12 +154,12 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            st.markdown('<div class="macos-card" style="margin-top:-10px;">', unsafe_allow_html=True)
+            st.markdown('<div class="macos-card">', unsafe_allow_html=True)
             st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            # 詳細位置垂直排列
+            # 垂直排列
             st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
