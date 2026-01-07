@@ -45,7 +45,7 @@ def clear_search():
 def load_data():
     try:
         # 直接指定你上傳的 CSV 檔案名稱
-        df = pd.read_csv("Cable list  音視訊 20201109.xlsx - 迴路盒.csv")
+        df = pd.read_csv("Cable list 20201109.xlsx - 迴路盒.csv")
         df.columns = [c.strip() for c in df.columns]
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
