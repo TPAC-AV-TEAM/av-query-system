@@ -2,11 +2,21 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定
+# 1. 網頁基本設定 (這是 Android 安裝時抓取名稱的最高優先級)
 st.set_page_config(
-    page_title="AV System OS 26",
+    page_title="AV系統-A館", 
     page_icon="🕶️",
     layout="centered"
+)
+
+# 解決 Android 安裝名稱問題 (維持你測試成功的結構)
+st.components.v1.html(
+    f"""
+    <script>
+        window.parent.document.title = "AV系統-A館";
+    </script>
+    """,
+    height=0,
 )
 
 # 2. 進階 macOS 26 視覺規範
@@ -20,12 +30,12 @@ macos_26_style = """
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
     }
 
-    /* 緊湊佈局：移除標題下方的多餘空白 */
+    /* 關鍵修正：調整搜尋容器間距，確保不擋住標題 */
     .search-container {
-        margin-top: -20px !important;
+        margin-top: 10px !important;
+        margin-bottom: 20px !important;
     }
 
-    /* 強制行動端搜尋欄不換行 */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -42,7 +52,7 @@ macos_26_style = """
     }
 
     .block-container {
-        padding-top: 1.5rem !important;
+        padding-top: 2.5rem !important;
         max-width: 600px;
     }
 
@@ -55,7 +65,7 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 5px; /* 縮小標題底部間距 */
+        margin-bottom: 15px; /* 給予標題與下方組件足夠空間 */
     }
 
     .macos-card {
@@ -65,7 +75,7 @@ macos_26_style = """
         border: 0.5px solid rgba(255, 255, 255, 0.12);
         border-radius: 20px;
         padding: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
 
     .stTextInput > div > div > input {
@@ -73,8 +83,6 @@ macos_26_style = """
         background-color: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         color: #FFFFFF !important;
-        padding: 10px 14px !important;
-        font-size: 16px !important;
     }
 
     .stButton > button {
@@ -87,12 +95,12 @@ macos_26_style = """
     }
 
     [data-testid="stMetricValue"] { font-size: 22px !important; }
-    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 5px; }
+    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
 </style>
 """
 st.markdown(macos_26_style, unsafe_allow_html=True)
 
-# 3. 初始化狀態與回呼
+# 3. 初始化功能
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
@@ -107,7 +115,6 @@ def load_data():
         xlsx_files = [f for f in os.listdir(".") if f.endswith('.xlsx') and not f.startswith('~$')]
         target_file = next((f for f in xlsx_files if any(k in f for k in ["Cable", "音視訊", "迴路盒"])), None)
         if not target_file: return None, "NO_FILE"
-        
         df = pd.read_excel(target_file, engine='openpyxl')
         df.columns = [c.strip() for c in df.columns]
         if '迴路盒編號' in df.columns:
@@ -123,7 +130,7 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區塊 (加入 search-container class 控制間距)
+    # 搜尋區塊
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
@@ -137,7 +144,7 @@ if df is not None:
         st.button("✕", on_click=clear_search)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 搜尋邏輯與結果顯示
+    # 搜尋結果
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
@@ -145,20 +152,17 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            # 結果卡片：基本資訊
-            st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+            st.markdown('<div class="macos-card" style="margin-top:-10px;">', unsafe_allow_html=True)
             st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            # 將詳細位置移到廳別下方 (移除 mc1, mc2 欄位設計)
+            # 詳細位置垂直排列
             st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
-            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) # 增加一點點垂直間距
+            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
-            
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # 結果卡片：詳細清單
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
                 st.markdown("<p style='color:#8E8E93; font-size:14px; margin-bottom:10px;'>📦 接口清單</p>", unsafe_allow_html=True)
@@ -168,7 +172,6 @@ if df is not None:
         else:
             st.error("查無此編號")
     else:
-        # 移除了原本可能產生的空白間距
         st.markdown('<p class="status-text">READY TO SCAN</p>', unsafe_allow_html=True)
 else:
     st.error(f"系統故障: {status}")
