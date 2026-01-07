@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# 網頁基本設定：設置標題與佈局
+# 網頁基本設定
 st.set_page_config(
     page_title="AV 迴路盒查詢系統",
     page_icon="🔍",
@@ -23,19 +23,21 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 定義讀取資料的函數，並使用快取避免重複讀取
+# 定義讀取資料的函數
 @st.cache_data
 def load_data():
-    # 讀取您上傳的 CSV 檔案
-    # 注意：檔案名稱必須與環境中或 GitHub 上的檔案名稱完全一致
-    file_path = "Cable list  音視訊 20201109.xlsx - 迴路盒.csv"
+    # 修改處：將檔名改為您的 .xlsx 檔名
+    # 注意：此處檔名必須與您上傳到 GitHub 的檔案名稱完全一致
+    file_path = "Cable list  音視訊 20201109.xlsx"
     try:
-        df = pd.read_csv(file_path)
-        # 資料預處理：統一搜尋格式（大寫、移除空格、移除橫線）
+        # 修改處：使用 read_excel 並指定引擎為 openpyxl
+        df = pd.read_excel(file_path, engine='openpyxl')
+        
+        # 資料預處理：建立搜尋用 ID (大寫、去空格、去橫線)
         df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(' ', '').str.replace('-', '')
         return df
     except Exception as e:
-        st.error(f"無法讀取資料檔案，請確認檔名是否正確。錯誤訊息: {e}")
+        st.error(f"⚠️ 環境檢查失敗：無法讀取 Excel 檔案。請確認 GitHub 中是否有檔案：\n`{file_path}`\n錯誤訊息: {e}")
         return None
 
 # 執行讀取資料
@@ -48,60 +50,46 @@ st.markdown("---")
 if df is not None:
     # 建立搜尋列
     st.subheader("請輸入迴路盒編號")
-    user_input = st.text_input("搜尋範例：AV 04-01 或直接輸入 04-01", placeholder="例如: 04-01")
+    user_input = st.text_input("搜尋範例：04-01 或 AV 04-01", placeholder="請在此輸入...")
 
     if user_input:
-        # 處理使用者輸入的關鍵字
+        # 處理使用者輸入
         query = user_input.upper().replace(' ', '').replace('-', '')
-        if not query.startswith("AV"):
+        if not query.startswith("AV") and query:
             query = "AV" + query
 
-        # 在資料庫中比對
+        # 在資料中比對
         match = df[df['search_id'] == query]
 
         if not match.empty:
-            # 取得該盒子的一般資訊（取第一筆作為代表）
             info = match.iloc[0]
-
-            # 使用兩欄佈局顯示重要位置資訊
+            
+            # 顯示主要位置資訊
             col1, col2 = st.columns(2)
             with col1:
-                # 處理可能的換行字元，只顯示主標題
-                theater_name = str(info['廳別']).split('\n')[0]
-                st.metric("所屬廳別", theater_name)
+                theater = str(info['廳別']).split('\n')[0]
+                st.metric("所屬廳別", theater)
             with col2:
-                # 將位置中的換行轉換為空格，方便閱讀
-                location_detail = str(info['迴路盒位置']).replace('\n', ' ')
-                st.metric("位置詳細", location_detail)
+                location = str(info['迴路盒位置']).replace('\n', ' ')
+                st.metric("位置詳細", location)
 
             st.markdown("---")
-
-            # 顯示接口統計摘要
+            
+            # 顯示接口統計
             st.subheader("📦 接口數量匯總")
-            # 依照系統、接頭、接頭型式進行分組加總
             summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
             summary.columns = ['系統類型', '接頭型號', '安裝/型式', '總數量']
-            st.dataframe(summary, use_container_width=True, hide_index=True)
+            st.table(summary)
 
-            # 顯示詳細線路清單
-            with st.expander("🔍 點擊展開：查看每一條線路的標示號碼與目的地"):
-                detailed_df = match[['迴路標示號碼', '線材', '目的地樓層', '機房名稱', '機櫃', '點位']].copy()
-                detailed_df.columns = ['迴路標示', '線材型號', '目的地樓層', '機房名稱', '機櫃編號', '點位']
-                st.write(detailed_df)
+            # 詳細線路
+            with st.expander("🔍 查看詳細線路目的地"):
+                detailed = match[['迴路標示號碼', '線材', '目的地樓層', '機房名稱', '機櫃', '點位']].copy()
+                st.dataframe(detailed, use_container_width=True)
         else:
-            st.warning(f"找不到編號「{user_input}」的相關資料，請檢查編號是否有誤。")
+            st.warning(f"找不到編號「{user_input}」，請檢查輸入是否正確。")
     else:
-        # 未輸入時的提示畫面
-        st.info("💡 提示：輸入 4F 的編號（如 04-01）可快速查看舞台右側的設備狀況。")
-
-        # 顯示最近的搜尋建議
-        st.markdown("### 快速連結")
-        quick_cols = st.columns(4)
-        sample_ids = ["AV 04-01", "AV 04-02", "AV 04-03", "AV 04-04"]
-        for i, sid in enumerate(sample_ids):
-            if quick_cols[i].button(sid):
-                st.info(f"請在搜尋框輸入 {sid} 進行查詢")
+        st.info("💡 提示：輸入 4F 的編號（如 04-01）可快速查看現場設備狀況。")
 
 # 頁尾資訊
 st.markdown("---")
-st.caption("資料來源：Cable list 音視訊 20201109 | 系統最後更新：2026-01-07")
+st.caption("環境狀態：已連線至 GitHub Excel 資料庫 | 系統版本：v1.2")
