@@ -2,12 +2,21 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定 (請修改 page_title 以區分不同 App)
-# App A 設為 "AV系統-A館", App B 設為 "AV系統-B館"
+# 1. 網頁基本設定
 st.set_page_config(
-    page_title="AV系統-A館", 
+    page_title="迴路盒查詢", # <--- 【修改處 1/2】修改此處以區分不同 App
     page_icon="🕶️",
     layout="centered"
+)
+
+# 強制修改瀏覽器標題，解決 Android Chrome 安裝時抓取名稱錯誤的問題
+st.components.v1.html(
+    f"""
+    <script>
+        window.parent.document.title = "迴路盒查詢"; // <--- 【修改處 2/2】這裡也要同步修改
+    </script>
+    """,
+    height=0,
 )
 
 # 2. 進階 macOS 26 視覺規範
@@ -21,10 +30,9 @@ macos_26_style = """
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
     }
 
-    /* 緊湊佈局：強制移除搜尋框上方的所有間距 */
+    /* 緊湊佈局：移除標題與搜尋框之間的空白 */
     .search-container {
-        margin-top: -35px !important;
-        margin-bottom: 10px !important;
+        margin-top: -45px !important;
     }
 
     /* 強制行動端搜尋欄不換行 */
@@ -67,7 +75,7 @@ macos_26_style = """
         border: 0.5px solid rgba(255, 255, 255, 0.12);
         border-radius: 20px;
         padding: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
 
     .stTextInput > div > div > input {
@@ -102,7 +110,7 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取 (核心邏輯保持穩定)
+# 4. 資料讀取
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
@@ -125,7 +133,7 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區塊 (加入 search-container class 控制間距)
+    # 搜尋區塊
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
@@ -148,14 +156,14 @@ if df is not None:
         if not match.empty:
             info = match.iloc[0]
             # 結果卡片：基本資訊
-            st.markdown('<div class="macos-card" style="margin-top:-5px;">', unsafe_allow_html=True)
+            st.markdown('<div class="macos-card" style="margin-top:-10px;">', unsafe_allow_html=True)
             st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            # --- 重點修改：垂直顯示 ---
+            # 詳細位置垂直排列在廳別下方
             st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
-            st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True) 
+            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
             
             st.markdown('</div>', unsafe_allow_html=True)
