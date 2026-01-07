@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定
+# 1. 網頁基本設定 (這是 Android 安裝時抓取名稱的最高優先級)
 st.set_page_config(
     page_title="AV系統-A館", 
     page_icon="🕶️",
@@ -95,13 +95,6 @@ macos_26_style = """
 
     [data-testid="stMetricValue"] { font-size: 22px !important; }
     .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
-
-    /* --- 修復選單：讓表格右上角的「...」選單保持恆亮 --- */
-    div[data-testid="stElementToolbar"] {
-        opacity: 1 !important;
-        visibility: visible !important;
-        z-index: 100 !important;
-    }
 </style>
 """
 st.markdown(macos_26_style, unsafe_allow_html=True)
@@ -175,15 +168,10 @@ if df is not None:
                 # 直接進行完整分組
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 
-                # --- 修改處：使用更通用的 Column 設定以防報錯 ---
+                # 透過 column_order 控制初始顯示，不顯示的欄位會在 st.dataframe 的內建清單中
                 st.dataframe(
                     summary, 
-                    column_order=("系統", "接頭", "接頭數"),
-                    column_config={
-                        "接頭數": st.column_config.Column(
-                            alignment="center"  # 僅保留置中設定，避開 width 報錯
-                        )
-                    },
+                    column_order=("系統", "接頭", "接頭數"), # 這裡排除了 "接頭型式"
                     hide_index=True, 
                     use_container_width=True
                 )
