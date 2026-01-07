@@ -6,14 +6,14 @@ import os
 APP_NAME = "AV系統-總館" 
 st.set_page_config(page_title=APP_NAME, page_icon="🕶️", layout="centered")
 
-# 強制修改標題 (解決 Android 安裝名稱問題)
+# 解決 Android 安裝名稱問題的標題注入
 st.components.v1.html(f"<script>window.parent.document.title = '{APP_NAME}';</script>", height=0)
 
-# 2. 定義廳院代碼對應表 (排除中文字呈現)
+# 2. 定義廳院代碼與配色馬甲 (排除中文字呈現)
 HALL_MAPS = {
-    "大劇院": {"display": "GT (Grand Theatre)", "color": "#0A84FF"},
-    "多形式中劇院": {"display": "BB (Black Box)", "color": "#FF375F"},
-    "鏡框式中劇院": {"display": "GP (Grand Playhouse)", "color": "#FFD60A"},
+    "大劇院": {"display": "GT (Grand Theatre)", "color": "#0A84FF"},           # 藍色
+    "多形式中劇院": {"display": "BB (Black Box)", "color": "#FF375F"},         # 粉紅
+    "鏡框式中劇院": {"display": "GP (Grand Playhouse)", "color": "#FFD60A"},   # 金色
     "DEFAULT": {"display": "AV System", "color": "#FFFFFF"}
 }
 
@@ -35,7 +35,7 @@ macos_style = """
 """
 st.markdown(macos_style, unsafe_allow_html=True)
 
-# 4. 初始化與資料讀取
+# 4. 初始化與資料讀取 (根據上傳的檔案名稱)
 if 'search_query' not in st.session_state: st.session_state.search_query = ""
 def clear_search():
     st.session_state.search_query = ""
@@ -44,7 +44,7 @@ def clear_search():
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
-        # 直接使用 CSV 檔案
+        # 直接指定你上傳的 CSV 檔案名稱
         df = pd.read_csv("Cable list  音視訊 20201109.xlsx - 迴路盒.csv")
         df.columns = [c.strip() for c in df.columns]
         if '迴路盒編號' in df.columns:
@@ -56,18 +56,20 @@ def load_data():
 df, status = load_data()
 
 # 5. 介面呈現
-st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">AV BOX SEARCH</h1>', unsafe_allow_html=True)
 
 if df is not None:
+    # 搜尋區塊
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
-        user_input = st.text_input("SEARCH", key="search_input_widget", placeholder="輸入編號 (例如: 07-02)", label_visibility="collapsed").strip()
+        user_input = st.text_input("SEARCH", key="search_input_widget", placeholder="Enter ID (e.g. 07-02)", label_visibility="collapsed").strip()
         st.session_state.search_query = user_input
     with c2:
         st.button("✕", on_click=clear_search)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # 搜尋結果
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
@@ -75,11 +77,11 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            # 取得原始廳名並獲取馬甲資訊
+            # 取得原始廳名並映射到英文代碼馬甲
             raw_hall = str(info.get('廳別', 'N/A')).strip()
             badge = HALL_MAPS.get(raw_hall, HALL_MAPS["DEFAULT"])
 
-            # 結果卡片：基本資訊
+            # 結果卡片：顯示英文馬甲代碼
             st.markdown(f'''
                 <div class="macos-card" style="border-left: 5px solid {badge['color']};">
                     <p style='color:{badge['color']}; font-size:12px; font-weight:700; margin-bottom:4px;'>
@@ -92,24 +94,24 @@ if df is not None:
             
             # 詳細內容
             st.markdown('<div class="macos-card" style="margin-top:-20px;">', unsafe_allow_html=True)
-            # 標籤顯示馬甲名稱，而非原始中文字
             st.metric("LOCATION", badge['display'])
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
+            # 清理換行符號
             loc_detail = str(info.get('迴路盒位置', 'N/A')).replace('\\n', ' ').replace('\n', ' ')
             st.metric("POSITION DETAIL", loc_detail)
             st.markdown('</div>', unsafe_allow_html=True)
 
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
-                st.markdown(f"<p style='color:{badge['color']}; font-size:14px; margin-bottom:10px;'>📦 {badge['display']} 接口清單</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:{badge['color']}; font-size:14px; margin-bottom:10px;'>📦 {badge['display']} INTERFACE LIST</p>", unsafe_allow_html=True)
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 st.dataframe(summary, hide_index=True, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.error("查無此編號")
+            st.error("No record found for this ID.")
     else:
         st.markdown('<p class="status-text">READY TO SCAN</p>', unsafe_allow_html=True)
 else:
-    st.error(f"系統故障: {status}")
+    st.error(f"System Error: {status}")
 
 st.markdown('<p style="text-align:center; font-size:10px; color:#3A3A3C; margin-top:30px; letter-spacing: 2px;">OS 26 TERMINAL</p>', unsafe_allow_html=True)
