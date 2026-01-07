@@ -2,79 +2,138 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 網頁基本設定
+# 1. 網頁基本設定 (Apple 風格優化)
 st.set_page_config(
-    page_title="AV 迴路盒查詢系統",
+    page_title="AV 迴路盒系統",
     page_icon="🔍",
-    layout="wide"
+    layout="centered", # 使用居中佈局，在手機上閱讀更舒適
+    initial_sidebar_state="collapsed"
 )
 
-# 套用自定義 CSS
-st.markdown("""
-    <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    </style>
-    """, unsafe_allow_html=True)
+# 2. 定製 Apple 視覺規範 CSS
+apple_css = """
+<style>
+    /* 全域字體與背景 */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #F5F5F7; /* Apple 淺灰背景 */
+    }
 
-# 定義讀取資料的函數
+    /* 頂部標題加粗 */
+    .main-title {
+        font-weight: 700;
+        color: #1D1D1F;
+        letter-spacing: -0.5px;
+        text-align: center;
+        padding-top: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* 手機端卡片設計 */
+    .apple-card {
+        background: white;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+        border: 1px solid #E5E5E7;
+    }
+
+    /* 指標數據優化 */
+    .stMetric {
+        background-color: #FBFBFD;
+        border-radius: 12px;
+        padding: 12px !important;
+        border: 1px solid #F0F0F2;
+    }
+
+    /* 按鈕樣式：iOS 藍 */
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        border: none;
+        background-color: #007AFF;
+        color: white;
+        font-weight: 600;
+        padding: 10px 0;
+        transition: all 0.2s;
+    }
+    
+    .stButton>button:hover {
+        background-color: #0056b3;
+        color: white;
+    }
+
+    /* 隱藏預設元件提升簡約感 */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* 針對手機屏幕優化輸入框尺寸 */
+    .stTextInput input {
+        border-radius: 12px !important;
+        padding: 12px !important;
+        font-size: 16px !important; /* 防止 iOS 自動縮放 */
+    }
+</style>
+"""
+st.markdown(apple_css, unsafe_allow_html=True)
+
+# 3. 資料讀取邏輯
 @st.cache_data
 def load_data():
-    # 預設檔名
     default_file = "Cable list  音視訊 20201109.xlsx"
-    
-    # 獲取目前目錄下的所有檔案
     all_files = os.listdir(".")
     xlsx_files = [f for f in all_files if f.endswith('.xlsx')]
     
     target_file = None
-
-    # 1. 先嘗試精確匹配
     if default_file in all_files:
         target_file = default_file
-    # 2. 如果失敗，嘗試尋找包含關鍵字的任何 xlsx 檔案
     elif xlsx_files:
         for f in xlsx_files:
-            if "Cable" in f or "音視訊" in f:
+            if any(k in f for k in ["Cable", "音視訊", "迴路盒"]):
                 target_file = f
                 break
-        # 3. 如果還是沒找到，就抓第一個 xlsx 檔案
         if not target_file:
             target_file = xlsx_files[0]
 
     if not target_file:
-        st.error("⚠️ 找不到任何 Excel (.xlsx) 檔案！")
-        st.write("📊 **目前資料夾內容：**", all_files)
         return None
 
     try:
-        # 讀取 Excel
         df = pd.read_excel(target_file, engine='openpyxl')
+        if '迴路盒編號' not in df.columns: return None
         
-        # 檢查是否有「迴路盒編號」這一欄
-        if '迴路盒編號' not in df.columns:
-            st.error(f"❌ 檔案 `{target_file}` 格式不符：找不到「迴路盒編號」欄位。")
-            return None
-
-        # 資料預處理
+        # 數據預處理
+        if '接頭數' in df.columns:
+            df['接頭數'] = pd.to_numeric(df['接頭數'], errors='coerce').fillna(0)
         df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(' ', '').str.replace('-', '')
-        st.sidebar.success(f"✅ 已成功讀取：{target_file}")
-        return df
-    except Exception as e:
-        st.error(f"❌ 讀取失敗：{target_file}")
-        st.write(f"錯誤訊息: {e}")
+        return df, target_file
+    except:
         return None
 
-# 執行讀取資料
-df = load_data()
+data_tuple = load_data()
 
-# 標題區
-st.title("📟 音視訊迴路盒快速查詢系統")
-st.markdown("---")
+# 4. 主介面設計
+st.markdown('<h1 class="main-title">音視訊迴路盒查詢</h1>', unsafe_allow_html=True)
 
-if df is not None:
-    st.subheader("請輸入迴路盒編號")
-    user_input = st.text_input("例如：04-01 或 AV 04-01", placeholder="請在此輸入...")
+if data_tuple:
+    df, filename = data_tuple
+    
+    # 搜尋區卡片
+    with st.container():
+        st.markdown('<div class="apple-card">', unsafe_allow_html=True)
+        user_input = st.text_input("請輸入編號", placeholder="例如: 04-01", label_visibility="collapsed")
+        
+        # 快速按鈕區 (針對手機觸控優化)
+        cols = st.columns(4)
+        samples = ["04-01", "04-02", "04-05", "04-08"]
+        for i, sid in enumerate(samples):
+            if cols[i].button(sid):
+                user_input = sid
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if user_input:
         query = user_input.upper().replace(' ', '').replace('-', '')
@@ -85,31 +144,41 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            col1, col2 = st.columns(2)
-            with col1:
-                theater = str(info['廳別']).split('\n')[0]
-                st.metric("所屬廳別", theater)
-            with col2:
-                location = str(info['迴路盒位置']).replace('\n', ' ')
-                st.metric("位置詳細", location)
-
-            st.markdown("---")
-            st.subheader("📦 接口數量匯總")
             
-            # 過濾掉欄位全空或不正確的資料後進行加總
-            if '系統' in match.columns and '接頭' in match.columns:
+            # 位置資訊卡片
+            st.markdown('<div class="apple-card">', unsafe_allow_html=True)
+            st.markdown(f"### 📍 {user_input.upper()}")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.metric("廳別", str(info['廳別']).split('\n')[0])
+            with c2:
+                # 針對手機螢幕簡化位置文字
+                loc = str(info['迴路盒位置']).replace('\n', ' ')
+                st.metric("位置詳細", loc)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # 統計匯總卡片
+            st.markdown('<div class="apple-card">', unsafe_allow_html=True)
+            st.markdown("### 📦 接口統計")
+            if '系統' in match.columns:
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
-                summary.columns = ['系統類型', '接頭型號', '安裝/型式', '總數量']
+                summary.columns = ['系統', '接頭型號', '型式', '數量']
+                summary['數量'] = summary['數量'].astype(int)
+                # 使用 table 更適合手機顯示固定寬度
                 st.table(summary)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            with st.expander("🔍 查看詳細線路目的地"):
-                # 選擇存在的欄位顯示
-                cols_to_show = [c for c in ['迴路標示號碼', '線材', '目的地樓層', '機房名稱', '機櫃', '點位'] if c in match.columns]
-                st.dataframe(match[cols_to_show], use_container_width=True)
+            # 詳細明細 (收納式設計)
+            with st.expander("🔍 完整線路目的地明細"):
+                show_cols = [c for c in ['迴路標示號碼', '線材', '目的地樓層', '機房名稱', '機櫃', '點位'] if c in match.columns]
+                st.dataframe(match[show_cols], use_container_width=True)
         else:
-            st.warning(f"找不到編號「{user_input}」，請檢查輸入是否正確。")
+            st.error("查無資料，請檢查編號。")
     else:
-        st.info("💡 提示：輸入 4F 的編號（如 04-01）可快速查看現場設備狀況。")
+        st.markdown('<p style="text-align:center; color:#8E8E93;">輸入 4F 編號快速查看現場設備狀況</p>', unsafe_allow_html=True)
 
-st.markdown("---")
-st.caption("環境狀態：已自動識別 Excel 資料庫 | 系統版本：v1.4 (自動適應檔名版)")
+else:
+    st.error("⚠️ 環境中找不到資料檔案，請確認 Excel 已上傳。")
+
+# 頁尾
+st.markdown(f'<p style="text-align:center; font-size:12px; color:#AEAEB2; margin-top:50px;">系統版本 v1.6 (iOS Optimized)<br>資料來源: {data_tuple[1] if data_tuple else "未連結"}</p>', unsafe_allow_html=True)
