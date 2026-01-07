@@ -2,11 +2,21 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定
+# 1. 網頁基本設定 (這是 Android 安裝時抓取名稱的最高優先級)
 st.set_page_config(
-    page_title="AV System OS 26",
+    page_title="AV系統-A館", 
     page_icon="🕶️",
     layout="centered"
+)
+
+# 解決 Android 安裝名稱問題
+st.components.v1.html(
+    f"""
+    <script>
+        window.parent.document.title = "AV系統-A館";
+    </script>
+    """,
+    height=0,
 )
 
 # 2. 進階 macOS 26 視覺規範
@@ -21,7 +31,8 @@ macos_26_style = """
     }
 
     .search-container {
-        margin-top: -20px !important;
+        margin-top: 10px !important;
+        margin-bottom: 20px !important;
     }
 
     [data-testid="stHorizontalBlock"] {
@@ -40,7 +51,7 @@ macos_26_style = """
     }
 
     .block-container {
-        padding-top: 1.5rem !important;
+        padding-top: 2.5rem !important;
         max-width: 600px;
     }
 
@@ -53,7 +64,7 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 5px;
+        margin-bottom: 15px;
     }
 
     .macos-card {
@@ -63,7 +74,7 @@ macos_26_style = """
         border: 0.5px solid rgba(255, 255, 255, 0.12);
         border-radius: 20px;
         padding: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
 
     .stTextInput > div > div > input {
@@ -71,8 +82,6 @@ macos_26_style = """
         background-color: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         color: #FFFFFF !important;
-        padding: 10px 14px !important;
-        font-size: 16px !important;
     }
 
     .stButton > button {
@@ -85,12 +94,12 @@ macos_26_style = """
     }
 
     [data-testid="stMetricValue"] { font-size: 22px !important; }
-    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 5px; }
+    .status-text { text-align: center; color: #48484A; font-size: 12px; letter-spacing: 1px; margin-top: 15px; }
 </style>
 """
 st.markdown(macos_26_style, unsafe_allow_html=True)
 
-# 3. 初始化狀態與回呼
+# 3. 初始化功能
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
@@ -98,33 +107,18 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取與轉換邏輯
+# 4. 資料讀取
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
         xlsx_files = [f for f in os.listdir(".") if f.endswith('.xlsx') and not f.startswith('~$')]
         target_file = next((f for f in xlsx_files if any(k in f for k in ["Cable", "音視訊", "迴路盒"])), None)
         if not target_file: return None, "NO_FILE"
-        
         df = pd.read_excel(target_file, engine='openpyxl')
         df.columns = [c.strip() for c in df.columns]
-
-        # --- 廳別名稱轉換功能 ---
-        if '廳別' in df.columns:
-            def convert_venue(val):
-                s = str(val)
-                if "大劇院" in s: return "GT"
-                if "多形式" in s: return "BB"
-                if "鏡框式" in s: return "GP"
-                return s.split('\n')[0] # 若都不符合，則回傳第一行原始文字
-
-            df['廳別'] = df['廳別'].apply(convert_venue)
-
-        # --- 搜尋 ID 處理 ---
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
             df['search_id'] = df['search_id'].apply(lambda x: x if x.startswith("AV") else "AV"+x)
-        
         return df, target_file
     except Exception as e:
         return None, str(e)
@@ -149,7 +143,7 @@ if df is not None:
         st.button("✕", on_click=clear_search)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 搜尋邏輯與結果顯示
+    # 搜尋結果
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
@@ -157,24 +151,31 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            # 結果卡片：基本資訊
-            st.markdown('<div class="macos-card">', unsafe_allow_html=True)
+            # 基本資訊卡片
+            st.markdown('<div class="macos-card" style="margin-top:-10px;">', unsafe_allow_html=True)
             st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            # 顯示轉換後的廳別 (GT/BB/GP)
-            st.metric("廳別", info['廳別'])
-            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
+            st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
+            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
-            
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # 結果卡片：詳細清單
+            # 接口清單卡片 (修改部分)
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
                 st.markdown("<p style='color:#8E8E93; font-size:14px; margin-bottom:10px;'>📦 接口清單</p>", unsafe_allow_html=True)
-                summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
+                
+                # 新增切換開關，控制是否顯示「接頭型式」
+                show_type = st.checkbox("顯示詳細型式", value=False)
+                
+                # 根據開關決定分組的欄位
+                group_cols = ['系統', '接頭']
+                if show_type:
+                    group_cols.append('接頭型式')
+                
+                summary = match.groupby(group_cols)['接頭數'].sum().reset_index()
                 st.dataframe(summary, hide_index=True, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
