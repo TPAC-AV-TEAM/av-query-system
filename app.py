@@ -168,13 +168,10 @@ if df is not None:
                 # 直接進行完整分組
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 
-                # 這裡加入了置中設定，僅針對「接頭數」欄位調整
+                # 透過 column_order 控制初始顯示，不顯示的欄位會在 st.dataframe 的內建清單中
                 st.dataframe(
                     summary, 
-                    column_order=("系統", "接頭", "接頭數"),
-                    column_config={
-                        "接頭數": st.column_config.Column(alignment="center")
-                    },
+                    column_order=("系統", "接頭", "接頭數"), # 這裡排除了 "接頭型式"
                     hide_index=True, 
                     use_container_width=True
                 )
