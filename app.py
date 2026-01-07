@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. 進階 macOS 26 視覺規範
+# 2. 進階 macOS 26 視覺規範 (保持不變)
 macos_26_style = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -20,12 +20,8 @@ macos_26_style = """
         font-family: "SF Pro Display", "-apple-system", "Inter", sans-serif;
     }
 
-    /* 緊湊佈局：移除標題下方的多餘空白 */
-    .search-container {
-        margin-top: -20px !important;
-    }
+    .search-container { margin-top: -20px !important; }
 
-    /* 強制行動端搜尋欄不換行 */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
@@ -33,19 +29,10 @@ macos_26_style = """
         align-items: center !important;
         gap: 10px !important;
     }
-    [data-testid="column"] {
-        width: auto !important;
-        flex: 1 1 auto !important;
-    }
-    [data-testid="column"]:nth-child(2) {
-        flex: 0 0 45px !important;
-    }
+    [data-testid="column"] { width: auto !important; flex: 1 1 auto !important; }
+    [data-testid="column"]:nth-child(2) { flex: 0 0 45px !important; }
 
-    .block-container {
-        padding-top: 1.5rem !important;
-        max-width: 600px;
-    }
-
+    .block-container { padding-top: 1.5rem !important; max-width: 600px; }
     header, footer, [data-testid="stHeader"] { display: none !important; }
 
     .main-title {
@@ -55,7 +42,7 @@ macos_26_style = """
         -webkit-text-fill-color: transparent;
         font-size: 32px;
         text-align: center;
-        margin-bottom: 5px; /* 縮小標題底部間距 */
+        margin-bottom: 5px;
     }
 
     .macos-card {
@@ -100,7 +87,7 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取
+# 4. 資料讀取與處理
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
@@ -110,9 +97,23 @@ def load_data():
         
         df = pd.read_excel(target_file, engine='openpyxl')
         df.columns = [c.strip() for c in df.columns]
+
+        # --- 廳別名稱轉換邏輯 ---
+        venue_map = {
+            "大劇院": "GT",
+            "多形式中劇院": "BB",
+            "鏡框式中劇院": "GP"
+        }
+        
+        if '廳別' in df.columns:
+            # 轉換廳別名稱，若不在對照表中則保留原樣
+            df['廳別'] = df['廳別'].apply(lambda x: venue_map.get(str(x).strip(), x))
+
+        # --- 搜尋 ID 處理 ---
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
             df['search_id'] = df['search_id'].apply(lambda x: x if x.startswith("AV") else "AV"+x)
+            
         return df, target_file
     except Exception as e:
         return None, str(e)
@@ -123,7 +124,6 @@ df, status = load_data()
 st.markdown('<h1 class="main-title">音視訊迴路盒</h1>', unsafe_allow_html=True)
 
 if df is not None:
-    # 搜尋區塊 (加入 search-container class 控制間距)
     st.markdown('<div class="macos-card search-container">', unsafe_allow_html=True)
     c1, c2 = st.columns([0.85, 0.15])
     with c1:
@@ -137,7 +137,6 @@ if df is not None:
         st.button("✕", on_click=clear_search)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 搜尋邏輯與結果顯示
     if st.session_state.search_query:
         query = st.session_state.search_query.upper().replace(' ', '').replace('-', '')
         if not query.startswith("AV"): query = "AV" + query
@@ -145,20 +144,18 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            # 結果卡片：基本資訊
             st.markdown('<div class="macos-card">', unsafe_allow_html=True)
             st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
-            # 將詳細位置移到廳別下方 (移除 mc1, mc2 欄位設計)
-            st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
-            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) # 增加一點點垂直間距
+            # 顯示轉換後的廳別 (GT/BB/GP)
+            st.metric("廳別", str(info.get('廳別', 'N/A')))
+            st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # 結果卡片：詳細清單
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
                 st.markdown("<p style='color:#8E8E93; font-size:14px; margin-bottom:10px;'>📦 接口清單</p>", unsafe_allow_html=True)
@@ -168,7 +165,6 @@ if df is not None:
         else:
             st.error("查無此編號")
     else:
-        # 移除了原本可能產生的空白間距
         st.markdown('<p class="status-text">READY TO SCAN</p>', unsafe_allow_html=True)
 else:
     st.error(f"系統故障: {status}")
