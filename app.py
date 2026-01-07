@@ -151,7 +151,6 @@ if df is not None:
 
         if not match.empty:
             info = match.iloc[0]
-            # 基本資訊卡片
             st.markdown('<div class="macos-card" style="margin-top:-10px;">', unsafe_allow_html=True)
             st.markdown(f"<p style='color:#0A84FF; font-size:11px; font-weight:700; margin-bottom:4px;'>SYSTEM SCAN OK</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
@@ -162,21 +161,20 @@ if df is not None:
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # 接口清單卡片 (修改部分)
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
                 st.markdown("<p style='color:#8E8E93; font-size:14px; margin-bottom:10px;'>📦 接口清單</p>", unsafe_allow_html=True)
                 
-                # 新增切換開關，控制是否顯示「接頭型式」
-                show_type = st.checkbox("顯示詳細型式", value=False)
+                # 直接進行完整分組
+                summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 
-                # 根據開關決定分組的欄位
-                group_cols = ['系統', '接頭']
-                if show_type:
-                    group_cols.append('接頭型式')
-                
-                summary = match.groupby(group_cols)['接頭數'].sum().reset_index()
-                st.dataframe(summary, hide_index=True, use_container_width=True)
+                # 透過 column_order 控制初始顯示，不顯示的欄位會在 st.dataframe 的內建清單中
+                st.dataframe(
+                    summary, 
+                    column_order=("系統", "接頭", "接頭數"), # 這裡排除了 "接頭型式"
+                    hide_index=True, 
+                    use_container_width=True
+                )
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.error("查無此編號")
