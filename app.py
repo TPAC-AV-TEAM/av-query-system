@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 
-# 1. 網頁基本設定 (必須在所有 st 指令的最前面)
+# 1. 網頁基本設定 (這是 Android 安裝時抓取名稱的最高優先級)
 st.set_page_config(
     page_title="AV系統-A館", 
     page_icon="🕶️",
@@ -41,6 +41,13 @@ macos_26_style = """
         flex-wrap: nowrap !important;
         align-items: center !important;
         gap: 10px !important;
+    }
+    [data-testid="column"] {
+        width: auto !important;
+        flex: 1 1 auto !important;
+    }
+    [data-testid="column"]:nth-child(2) {
+        flex: 0 0 45px !important;
     }
 
     .block-container {
@@ -100,26 +107,15 @@ def clear_search():
     st.session_state.search_query = ""
     st.session_state["search_input_widget"] = ""
 
-# 4. 資料讀取 (確保這裡的 st 已經被正確 import)
+# 4. 資料讀取
 @st.cache_data(show_spinner=False)
 def load_data():
     try:
         xlsx_files = [f for f in os.listdir(".") if f.endswith('.xlsx') and not f.startswith('~$')]
         target_file = next((f for f in xlsx_files if any(k in f for k in ["Cable", "音視訊", "迴路盒"])), None)
         if not target_file: return None, "NO_FILE"
-        
         df = pd.read_excel(target_file, engine='openpyxl')
         df.columns = [c.strip() for c in df.columns]
-        
-        # 廳院名稱轉換邏輯
-        if '廳別' in df.columns:
-            name_mapping = {
-                "大劇院": "GT",
-                "多形式中劇院": "BB",
-                "鏡框式中劇院": "GP"
-            }
-            df['廳別'] = df['廳別'].replace(name_mapping)
-
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
             df['search_id'] = df['search_id'].apply(lambda x: x if x.startswith("AV") else "AV"+x)
@@ -168,10 +164,14 @@ if df is not None:
             if '系統' in match.columns:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
                 st.markdown("<p style='color:#8E8E93; font-size:14px; margin-bottom:10px;'>📦 接口清單</p>", unsafe_allow_html=True)
+                
+                # 直接進行完整分組
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
+                
+                # 透過 column_order 控制初始顯示，不顯示的欄位會在 st.dataframe 的內建清單中
                 st.dataframe(
                     summary, 
-                    column_order=("系統", "接頭", "接頭數"),
+                    column_order=("系統", "接頭", "接頭數"), # 這裡排除了 "接頭型式"
                     hide_index=True, 
                     use_container_width=True
                 )
