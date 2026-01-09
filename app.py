@@ -116,6 +116,17 @@ def load_data():
         if not target_file: return None, "NO_FILE"
         df = pd.read_excel(target_file, engine='openpyxl')
         df.columns = [c.strip() for c in df.columns]
+
+        # --- 廳院馬甲系統 (Mapping) ---
+        if '廳別' in df.columns:
+            name_mapping = {
+                "大劇院": "GT",
+                "多形式中劇院": "BB",
+                "鏡框式中劇院": "GP"
+            }
+            df['廳別'] = df['廳別'].replace(name_mapping)
+        # ----------------------------
+
         if '迴路盒編號' in df.columns:
             df['search_id'] = df['迴路盒編號'].astype(str).str.upper().str.replace(r'[\s-]', '', regex=True)
             df['search_id'] = df['search_id'].apply(lambda x: x if x.startswith("AV") else "AV"+x)
@@ -156,6 +167,7 @@ if df is not None:
             st.markdown(f"<h2 style='margin:0; font-size:26px; color:#FFFFFF;'>{info['迴路盒編號']}</h2>", unsafe_allow_html=True)
             st.markdown("<hr style='border:0.5px solid rgba(255,255,255,0.1); margin:15px 0;'>", unsafe_allow_html=True)
             
+            # 這裡顯示的會是馬甲後的縮寫 (GT/BB/GP)
             st.metric("廳別", str(info.get('廳別', 'N/A')).split('\n')[0])
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True) 
             st.metric("詳細位置", str(info.get('迴路盒位置', 'N/A')).replace('\n', ' '))
@@ -165,13 +177,11 @@ if df is not None:
                 st.markdown('<div class="macos-card">', unsafe_allow_html=True)
                 st.markdown("<p style='color:#8E8E93; font-size:14px; margin-bottom:10px;'>📦 接口清單</p>", unsafe_allow_html=True)
                 
-                # 直接進行完整分組
                 summary = match.groupby(['系統', '接頭', '接頭型式'])['接頭數'].sum().reset_index()
                 
-                # 透過 column_order 控制初始顯示，不顯示的欄位會在 st.dataframe 的內建清單中
                 st.dataframe(
                     summary, 
-                    column_order=("系統", "接頭", "接頭數"), # 這裡排除了 "接頭型式"
+                    column_order=("系統", "接頭", "接頭數"),
                     hide_index=True, 
                     use_container_width=True
                 )
